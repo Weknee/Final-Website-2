@@ -65,11 +65,6 @@
     input[type=file]{padding:6px}
     input[type=submit]{padding:10px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer}
 
-    /* Categories */
-    .categories{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-    .category-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:14px}
-    .category-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-
     /* Company Cards */
     .company-card{background:var(--card);padding:16px;border-radius:12px;border:1px solid var(--border);margin-bottom:16px;cursor:pointer;transition:all 0.3s ease}
     .company-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.1)}
@@ -82,9 +77,16 @@
     .branch-list.active{display:block}
     .branch-location{font-weight:600;margin-bottom:12px;color:var(--accent);padding:8px 0;border-bottom:1px dashed var(--border)}
     
-    /* Circular Images */
-    .image-gallery{display:flex;gap:16px;justify-content:center;margin:16px 0}
-    .circle-image{width:120px;height:120px;border-radius:50%;background:#e9f2ff;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:14px;text-align:center;padding:10px;border:3px solid var(--accent)}
+    /* Square Image Slider */
+    .image-slider{width:100%;height:260px;border-radius:10px;background:#e9f2ff;margin-bottom:16px;position:relative;overflow:hidden}
+    .slider-image{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:18px;position:absolute;opacity:0;transition:opacity 0.5s ease}
+    .slider-image.active{opacity:1}
+    .slider-nav{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+    .slider-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.5);cursor:pointer}
+    .slider-dot.active{background:white}
+    .slider-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.7);border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:18px;color:var(--accent)}
+    .slider-arrow.prev{left:12px}
+    .slider-arrow.next{right:12px}
 
     /* Application Links */
     .application-links{display:flex;gap:12px;margin-top:16px;justify-content:center}
@@ -186,14 +188,6 @@
           <div id="resultsCount" style="color:var(--muted)">12 job positions</div>
         </div>
 
-        <div class="categories">
-          <button class="category-btn active" data-category="all">All Companies</button>
-          <button class="category-btn" data-category="jollibee">Jollibee</button>
-          <button class="category-btn" data-category="mcdo">McDonald's</button>
-          <button class="category-btn" data-category="chowking">Chowking</button>
-          <button class="category-btn" data-category="localmart">LocalMart</button>
-        </div>
-
         <!-- COMPANY CARDS -->
         <div id="companyCards">
           <!-- Company cards will be rendered here by JS -->
@@ -259,7 +253,7 @@
         name: 'Jollibee',
         type: 'physical',
         description: 'Jollibee is the largest fast food chain in the Philippines, serving a wide variety of affordable and delicious meals including its famous Chickenjoy, Jolly Spaghetti, and Yumburger.',
-        images: ['Jollibee Store Front', 'Jollibee Interior'],
+        images: ['Jollibee Store Front', 'Jollibee Interior', 'Jollibee Team'],
         branches: [
           {
             location: 'Tibanga, Iligan City',
@@ -319,7 +313,7 @@
         name: 'McDonald\'s',
         type: 'physical',
         description: 'McDonald\'s is one of the world\'s largest fast food chains, known for its burgers, fries, and quick service. We provide excellent career opportunities with competitive benefits.',
-        images: ['McDonald\'s Store', 'McDonald\'s Team'],
+        images: ['McDonald\'s Store', 'McDonald\'s Team', 'McDonald\'s Interior'],
         branches: [
           {
             location: 'Poblacion, Iligan City',
@@ -355,7 +349,7 @@
         name: 'Chowking',
         type: 'physical',
         description: 'Chowking is the leading Chinese fast-food chain in the Philippines, offering delicious Chinese favorites like Chao Fan, dimsum, and noodles in a quick-service setting.',
-        images: ['Chowking Store', 'Chowking Food'],
+        images: ['Chowking Store', 'Chowking Food', 'Chowking Interior'],
         branches: [
           {
             location: 'Poblacion, Iligan City',
@@ -380,7 +374,7 @@
         name: 'LocalMart',
         type: 'physical',
         description: 'LocalMart is a leading retail chain in Iligan City, offering a wide range of products from groceries to household items. We provide excellent customer service and career growth opportunities.',
-        images: ['LocalMart Store', 'LocalMart Interior'],
+        images: ['LocalMart Store', 'LocalMart Interior', 'LocalMart Products'],
         branches: [
           {
             location: 'Poblacion, Iligan City',
@@ -416,7 +410,7 @@
         name: 'Virtual Assistant',
         type: 'online',
         description: 'Work from home as a Virtual Assistant handling administrative tasks, customer service, and social media management for international clients.',
-        images: ['Remote Work Setup', 'Virtual Meeting'],
+        images: ['Remote Work Setup', 'Virtual Meeting', 'Home Office'],
         positions: [
           {
             title: 'Virtual Assistant',
@@ -443,6 +437,7 @@
     document.getElementById('loc').value = 'Iligan City only';
 
     let currentJobType = 'physical';
+    let currentSliderInterval = null;
 
     // Count total positions
     function countTotalPositions(companyId = 'all') {
@@ -625,28 +620,73 @@
       });
     }
 
+    // Initialize image slider
+    function initImageSlider(images) {
+      if (currentSliderInterval) {
+        clearInterval(currentSliderInterval);
+      }
+      
+      const sliderImages = document.querySelectorAll('.slider-image');
+      const sliderDots = document.querySelectorAll('.slider-dot');
+      let currentSlide = 0;
+      
+      // Function to show a specific slide
+      function showSlide(index) {
+        sliderImages.forEach(slide => slide.classList.remove('active'));
+        sliderDots.forEach(dot => dot.classList.remove('active'));
+        
+        sliderImages[index].classList.add('active');
+        sliderDots[index].classList.add('active');
+        
+        currentSlide = index;
+      }
+      
+      // Add click events to dots
+      sliderDots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+          showSlide(index);
+        });
+      });
+      
+      // Add click events to arrows
+      document.querySelector('.slider-arrow.prev').addEventListener('click', () => {
+        const prevSlide = (currentSlide - 1 + images.length) % images.length;
+        showSlide(prevSlide);
+      });
+      
+      document.querySelector('.slider-arrow.next').addEventListener('click', () => {
+        const nextSlide = (currentSlide + 1) % images.length;
+        showSlide(nextSlide);
+      });
+      
+      // Auto-advance slides
+      currentSliderInterval = setInterval(() => {
+        const nextSlide = (currentSlide + 1) % images.length;
+        showSlide(nextSlide);
+      }, 4000);
+    }
+
     // Render company viewer with company details
     function renderCompanyViewer(company) {
-      // Create circular images
-      let imagesHTML = '';
+      // Create image slider
+      let sliderHTML = '';
       if (company.images && company.images.length > 0) {
-        imagesHTML = '<div class="image-gallery">';
-        company.images.forEach((image, index) => {
-          imagesHTML += `
-            <div class="circle-image">
-              ${image}
+        sliderHTML = `
+          <div class="image-slider">
+            ${company.images.map((image, index) => `
+              <div class="slider-image ${index === 0 ? 'active' : ''}">
+                ${image}
+              </div>
+            `).join('')}
+            <button class="slider-arrow prev">‹</button>
+            <button class="slider-arrow next">›</button>
+            <div class="slider-nav">
+              ${company.images.map((_, index) => `
+                <div class="slider-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></div>
+              `).join('')}
             </div>
-          `;
-        });
-        // Add empty circles if we have less than 2 images
-        for (let i = company.images.length; i < 2; i++) {
-          imagesHTML += `
-            <div class="circle-image">
-              Image ${i+1}
-            </div>
-          `;
-        }
-        imagesHTML += '</div>';
+          </div>
+        `;
       }
       
       jobViewer.innerHTML = `
@@ -655,7 +695,7 @@
           <div style="color:var(--muted); margin-top:4px">${currentJobType === 'physical' ? 'Physical Locations in Iligan City' : 'Online/Remote Work'}</div>
         </div>
         
-        ${imagesHTML}
+        ${sliderHTML}
         
         <div style="margin: 16px 0;">
           <h4 style="margin-bottom: 8px;">About ${company.name}</h4>
@@ -672,6 +712,11 @@
           <p style="color: var(--muted); font-size: 14px;">Click on any position to view details and apply</p>
         </div>
       `;
+      
+      // Initialize slider if images exist
+      if (company.images && company.images.length > 0) {
+        initImageSlider(company.images);
+      }
     }
 
     // Render job viewer with selected job
@@ -715,22 +760,6 @@
       `;
     }
 
-    // Category filtering
-    document.querySelectorAll('.category-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        // Remove active class from all buttons
-        document.querySelectorAll('.category-btn').forEach(btn => {
-          btn.classList.remove('active');
-        });
-        
-        // Add active class to clicked button
-        this.classList.add('active');
-        
-        const category = this.dataset.category;
-        renderCompanyCards(category);
-      });
-    });
-
     // Job type switching
     document.querySelectorAll('.job-type-tab').forEach(button => {
       button.addEventListener('click', function() {
@@ -772,27 +801,193 @@
       }
     });
 
+    // Search functionality
+    function performSearch() {
+      const query = document.getElementById('q').value.toLowerCase();
+      const category = document.getElementById('category').value;
+      const hiringOnly = document.getElementById('hiringOnly').checked;
+      
+      const data = currentJobType === 'physical' ? JOB_DATA : ONLINE_JOBS;
+      let filteredCompanies = [];
+      
+      data.forEach(company => {
+        // Check if company matches search criteria
+        const companyMatches = company.name.toLowerCase().includes(query) || 
+                              company.description.toLowerCase().includes(query);
+        
+        let filteredBranches = [];
+        
+        if (company.branches) {
+          company.branches.forEach(branch => {
+            let filteredPositions = [];
+            
+            branch.positions.forEach(position => {
+              const positionMatches = position.title.toLowerCase().includes(query) ||
+                                     position.description.toLowerCase().includes(query);
+              
+              const categoryMatches = category === 'All Categories' || 
+                                     position.title.toLowerCase().includes(category.toLowerCase()) ||
+                                     position.description.toLowerCase().includes(category.toLowerCase());
+              
+              const hiringMatches = !hiringOnly || position.hiring;
+              
+              if (positionMatches && categoryMatches && hiringMatches) {
+                filteredPositions.push(position);
+              }
+            });
+            
+            if (filteredPositions.length > 0) {
+              filteredBranches.push({
+                ...branch,
+                positions: filteredPositions
+              });
+            }
+          });
+        }
+        
+        // If company has matching positions or matches search query
+        if (filteredBranches.length > 0 || companyMatches) {
+          filteredCompanies.push({
+            ...company,
+            branches: filteredBranches.length > 0 ? filteredBranches : company.branches
+          });
+        }
+      });
+      
+      // Render filtered results
+      renderFilteredCompanies(filteredCompanies);
+    }
+
+    // Render filtered companies
+    function renderFilteredCompanies(companies) {
+      companyCards.innerHTML = '';
+      let positionsCount = 0;
+      
+      companies.forEach(company => {
+        positionsCount += countTotalPositions(company.id);
+        
+        const companyCard = document.createElement('div');
+        companyCard.className = 'company-card';
+        companyCard.dataset.company = company.id;
+        
+        let companyHTML = `
+          <div class="company-header">
+            <div class="company-logo">${company.name.charAt(0)}</div>
+            <div>
+              <div class="company-name">${company.name}</div>
+              <div class="company-branches">${currentJobType === 'physical' ? `${company.branches ? company.branches.length + ' branches in Iligan City' : 'Multiple positions available'}` : 'Remote Work'} • Click to view details</div>
+            </div>
+          </div>
+        `;
+        
+        if (currentJobType === 'physical' && company.branches) {
+          companyHTML += `<div class="branch-list" id="${company.id}-branches">`;
+          
+          company.branches.forEach(branch => {
+            companyHTML += `
+              <div class="branch-location">${branch.location}</div>
+            `;
+            
+            branch.positions.forEach(position => {
+              companyHTML += `
+                <div class="job">
+                  <div>
+                    <div style="font-weight:700">${position.title}</div>
+                    <div class="meta">${company.name} • <strong>${branch.location}</strong></div>
+                    <div class="tags">
+                      <span class="tag">${position.hiring ? 'Hiring' : 'Not Hiring'}</span>
+                      <span class="tag">${position.salary}</span>
+                    </div>
+                  </div>
+                  <div class="job-actions">
+                    <div class="salary">${position.salary}</div>
+                    <div class="small">${position.hiring ? 'Apply today' : 'Check back later'}</div>
+                    <div class="actions">
+                      <button class="btn save-btn">Save</button>
+                      <button class="btn ${position.hiring ? 'primary' : ''} view-job-btn" 
+                        data-job='${JSON.stringify({
+                          title: position.title,
+                          company: company.name,
+                          location: branch.location,
+                          salary: position.salary,
+                          hiring: position.hiring,
+                          contact: position.contact,
+                          description: position.description,
+                          applicationLinks: position.applicationLinks
+                        }).replace(/'/g, "&apos;")}'>
+                        ${position.hiring ? 'Apply Now' : 'Not Hiring'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              `;
+            });
+          });
+          companyHTML += `</div>`;
+        }
+        
+        companyCard.innerHTML = companyHTML;
+        companyCards.appendChild(companyCard);
+      });
+      
+      // Update results count
+      resultsCount.textContent = `${positionsCount} job positions`;
+      
+      // Add event listeners to company cards
+      document.querySelectorAll('.company-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+          // Don't trigger if clicking on a button inside the card
+          if (!e.target.classList.contains('btn')) {
+            // Remove active class from all cards
+            document.querySelectorAll('.company-card').forEach(c => {
+              c.classList.remove('active');
+            });
+            
+            // Add active class to clicked card
+            this.classList.add('active');
+            
+            const companyId = this.dataset.company;
+            const data = currentJobType === 'physical' ? JOB_DATA : ONLINE_JOBS;
+            const company = data.find(c => c.id === companyId);
+            
+            if (company) {
+              renderCompanyViewer(company);
+            }
+            
+            // Toggle branch list for physical jobs
+            if (currentJobType === 'physical') {
+              const branchList = this.querySelector('.branch-list');
+              if (branchList) {
+                branchList.classList.toggle('active');
+              }
+            }
+          }
+        });
+      });
+      
+      // Add event listeners to apply buttons
+      document.querySelectorAll('.view-job-btn:not(:disabled)').forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.stopPropagation(); // Prevent triggering the company card click
+          const jobData = JSON.parse(this.dataset.job.replace(/&apos;/g, "'"));
+          renderJobViewer(jobData);
+        });
+      });
+    }
+
     // initial render
     renderCompanyCards();
 
     // basic filtering (client-side)
-    document.getElementById('searchBtn').addEventListener('click', ()=>{
-      const q = (document.getElementById('q').value||'').toLowerCase();
-      const cat = document.getElementById('category').value;
-      const hiringOnly = document.getElementById('hiringOnly').checked;
-
-      // This is a simplified search - in a real app you would implement more robust search
-      if (q.trim() === '' && cat === 'All Categories' && !hiringOnly) {
-        renderCompanyCards();
-      } else {
-        alert('Search functionality would filter jobs based on your criteria in a full implementation.');
-      }
-    });
+    document.getElementById('searchBtn').addEventListener('click', performSearch);
 
     // allow pressing Enter in inputs to trigger search
     document.getElementById('q').addEventListener('keypress', (e)=>{ 
-      if(e.key==='Enter') document.getElementById('searchBtn').click() 
+      if(e.key==='Enter') performSearch();
     });
+
+    // Hiring only filter
+    document.getElementById('hiringOnly').addEventListener('change', performSearch);
   </script>
 </body>
 </html>
